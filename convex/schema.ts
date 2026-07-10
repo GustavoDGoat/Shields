@@ -1,0 +1,69 @@
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+import { authTables } from "@convex-dev/auth/server";
+
+export default defineSchema({
+  ...authTables,
+
+  profiles: defineTable({
+    userId: v.id("users"),
+    fullName: v.optional(v.string()),
+    email: v.optional(v.string()),
+  }).index("by_userId", ["userId"]),
+
+  userRoles: defineTable({
+    userId: v.id("users"),
+    role: v.union(v.literal("admin"), v.literal("student")),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_userId_role", ["userId", "role"]),
+
+  incidents: defineTable({
+    studentId: v.id("users"),
+    incidentType: v.union(
+      v.literal("phishing"),
+      v.literal("malware"),
+      v.literal("identity_theft"),
+      v.literal("data_breach"),
+      v.literal("unauthorized_access"),
+      v.literal("other"),
+    ),
+    description: v.string(),
+    urgencyLevel: v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
+    status: v.union(v.literal("pending"), v.literal("investigating"), v.literal("resolved")),
+    evidenceUrl: v.optional(v.string()),
+    adminNote: v.optional(v.string()),
+    updatedAt: v.optional(v.string()),
+  })
+    .index("by_studentId", ["studentId"])
+    .index("by_status", ["status"]),
+
+  phishingSimulations: defineTable({
+    title: v.string(),
+    description: v.string(),
+    difficultyLevel: v.string(),
+    content: v.any(),
+    isPhishing: v.boolean(),
+    createdBy: v.id("users"),
+  }).index("by_createdBy", ["createdBy"]),
+
+  simulationResults: defineTable({
+    userId: v.id("users"),
+    score: v.number(),
+    totalQuestions: v.number(),
+    correctAnswers: v.number(),
+    grade: v.string(),
+    completedAt: v.string(),
+    timeTakenSeconds: v.optional(v.number()),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_userId_completedAt", ["userId", "completedAt"]),
+
+  trainingVideos: defineTable({
+    title: v.string(),
+    description: v.string(),
+    youtubeUrl: v.string(),
+    category: v.string(),
+    createdBy: v.optional(v.id("users")),
+  }).index("by_category", ["category"]),
+});
