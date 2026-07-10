@@ -15,7 +15,7 @@ import { SkeletonCard, SkeletonTable } from '@/components/ui/skeleton-card';
 import AuthModal from '@/components/auth/AuthModal';
 
 const AUTHORIZED_ADMIN_EMAILS = [
-  'bunnermail8@gmail.com',
+  'gustavodgoat@gmail.com',
   'williamsjoshuas067@gmail.com',
 ];
 

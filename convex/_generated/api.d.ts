@@ -9,9 +9,9 @@
  */
 
 import type * as incidents from "../incidents.js";
+import type * as migrateAdminRoles from "../migrateAdminRoles.js";
 import type * as phishingSimulations from "../phishingSimulations.js";
 import type * as profiles from "../profiles.js";
-import type * as seedVideos from "../seedVideos.js";
 import type * as simulationResults from "../simulationResults.js";
 import type * as trainingVideos from "../trainingVideos.js";
 import type * as userManagement from "../userManagement.js";
@@ -26,9 +26,9 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   incidents: typeof incidents;
+  migrateAdminRoles: typeof migrateAdminRoles;
   phishingSimulations: typeof phishingSimulations;
   profiles: typeof profiles;
-  seedVideos: typeof seedVideos;
   simulationResults: typeof simulationResults;
   trainingVideos: typeof trainingVideos;
   userManagement: typeof userManagement;
