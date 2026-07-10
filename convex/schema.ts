@@ -1,25 +1,22 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
-import { authTables } from "@convex-dev/auth/server";
 
 export default defineSchema({
-  ...authTables,
-
   profiles: defineTable({
-    userId: v.id("users"),
+    userId: v.string(),
     fullName: v.optional(v.string()),
     email: v.optional(v.string()),
   }).index("by_userId", ["userId"]),
 
   userRoles: defineTable({
-    userId: v.id("users"),
+    userId: v.string(),
     role: v.union(v.literal("admin"), v.literal("student")),
   })
     .index("by_userId", ["userId"])
     .index("by_userId_role", ["userId", "role"]),
 
   incidents: defineTable({
-    studentId: v.id("users"),
+    studentId: v.string(),
     incidentType: v.union(
       v.literal("phishing"),
       v.literal("malware"),
@@ -44,11 +41,11 @@ export default defineSchema({
     difficultyLevel: v.string(),
     content: v.any(),
     isPhishing: v.boolean(),
-    createdBy: v.id("users"),
+    createdBy: v.string(),
   }).index("by_createdBy", ["createdBy"]),
 
   simulationResults: defineTable({
-    userId: v.id("users"),
+    userId: v.string(),
     score: v.number(),
     totalQuestions: v.number(),
     correctAnswers: v.number(),
@@ -64,6 +61,6 @@ export default defineSchema({
     description: v.string(),
     youtubeUrl: v.string(),
     category: v.string(),
-    createdBy: v.optional(v.id("users")),
+    createdBy: v.optional(v.string()),
   }).index("by_category", ["category"]),
 });

@@ -1,24 +1,16 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
-import { getAuthUserId } from "@convex-dev/auth/server";
 
 export const list = query({
-  handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) return [];
-
-    const isAdmin = await ctx.db
-      .query("userRoles")
-      .withIndex("by_userId_role", (q) => q.eq("userId", userId).eq("role", "admin"))
-      .first();
-
+  args: { userId: v.string(), isAdmin: v.boolean() },
+  handler: async (ctx, args) => {
     let incidents;
-    if (isAdmin) {
+    if (args.isAdmin) {
       incidents = await ctx.db.query("incidents").order("desc").collect();
     } else {
       incidents = await ctx.db
         .query("incidents")
-        .withIndex("by_studentId", (q) => q.eq("studentId", userId))
+        .withIndex("by_studentId", (q) => q.eq("studentId", args.userId))
         .order("desc")
         .collect();
     }
@@ -55,14 +47,13 @@ export const list = query({
 
 export const generateUploadUrl = mutation({
   handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
     return await ctx.storage.generateUploadUrl();
   },
 });
 
 export const create = mutation({
   args: {
+    studentId: v.string(),
     incidentType: v.union(
       v.literal("phishing"),
       v.literal("malware"),
@@ -76,16 +67,13 @@ export const create = mutation({
     evidenceStorageId: v.optional(v.id("_storage")),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
-
     let evidenceUrl: string | undefined;
     if (args.evidenceStorageId) {
       evidenceUrl = (await ctx.storage.getUrl(args.evidenceStorageId)) ?? undefined;
     }
 
     await ctx.db.insert("incidents", {
-      studentId: userId,
+      studentId: args.studentId,
       incidentType: args.incidentType,
       description: args.description,
       urgencyLevel: args.urgencyLevel,
@@ -99,14 +87,12 @@ export const updateStatus = mutation({
   args: {
     id: v.id("incidents"),
     status: v.union(v.literal("pending"), v.literal("investigating"), v.literal("resolved")),
+    userId: v.string(),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
-
     const isAdmin = await ctx.db
       .query("userRoles")
-      .withIndex("by_userId_role", (q) => q.eq("userId", userId).eq("role", "admin"))
+      .withIndex("by_userId_role", (q) => q.eq("userId", args.userId).eq("role", "admin"))
       .first();
     if (!isAdmin) throw new Error("Not authorized");
 
@@ -115,14 +101,11 @@ export const updateStatus = mutation({
 });
 
 export const addAdminNote = mutation({
-  args: { id: v.id("incidents"), note: v.string() },
+  args: { id: v.id("incidents"), note: v.string(), userId: v.string() },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
-
     const isAdmin = await ctx.db
       .query("userRoles")
-      .withIndex("by_userId_role", (q) => q.eq("userId", userId).eq("role", "admin"))
+      .withIndex("by_userId_role", (q) => q.eq("userId", args.userId).eq("role", "admin"))
       .first();
     if (!isAdmin) throw new Error("Not authorized");
 
@@ -131,14 +114,11 @@ export const addAdminNote = mutation({
 });
 
 export const remove = mutation({
-  args: { id: v.id("incidents") },
+  args: { id: v.id("incidents"), userId: v.string() },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
-
     const isAdmin = await ctx.db
       .query("userRoles")
-      .withIndex("by_userId_role", (q) => q.eq("userId", userId).eq("role", "admin"))
+      .withIndex("by_userId_role", (q) => q.eq("userId", args.userId).eq("role", "admin"))
       .first();
     if (!isAdmin) throw new Error("Not authorized");
 

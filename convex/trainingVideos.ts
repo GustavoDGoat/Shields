@@ -1,6 +1,5 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
-import { getAuthUserId } from "@convex-dev/auth/server";
 
 export const list = query({
   handler: async (ctx) => {
@@ -19,14 +18,12 @@ export const create = mutation({
     description: v.string(),
     youtubeUrl: v.string(),
     category: v.string(),
+    userId: v.string(),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
-
     const isAdmin = await ctx.db
       .query("userRoles")
-      .withIndex("by_userId_role", (q) => q.eq("userId", userId).eq("role", "admin"))
+      .withIndex("by_userId_role", (q) => q.eq("userId", args.userId).eq("role", "admin"))
       .first();
     if (!isAdmin) throw new Error("Not authorized");
 
@@ -35,7 +32,7 @@ export const create = mutation({
       description: args.description,
       youtubeUrl: args.youtubeUrl,
       category: args.category,
-      createdBy: userId,
+      createdBy: args.userId,
     });
   },
 });
@@ -47,31 +44,26 @@ export const update = mutation({
     description: v.string(),
     youtubeUrl: v.string(),
     category: v.string(),
+    userId: v.string(),
   },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
-
     const isAdmin = await ctx.db
       .query("userRoles")
-      .withIndex("by_userId_role", (q) => q.eq("userId", userId).eq("role", "admin"))
+      .withIndex("by_userId_role", (q) => q.eq("userId", args.userId).eq("role", "admin"))
       .first();
     if (!isAdmin) throw new Error("Not authorized");
 
-    const { id, ...fields } = args;
+    const { id, userId, ...fields } = args;
     await ctx.db.patch(id, fields);
   },
 });
 
 export const remove = mutation({
-  args: { id: v.id("trainingVideos") },
+  args: { id: v.id("trainingVideos"), userId: v.string() },
   handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
-
     const isAdmin = await ctx.db
       .query("userRoles")
-      .withIndex("by_userId_role", (q) => q.eq("userId", userId).eq("role", "admin"))
+      .withIndex("by_userId_role", (q) => q.eq("userId", args.userId).eq("role", "admin"))
       .first();
     if (!isAdmin) throw new Error("Not authorized");
 

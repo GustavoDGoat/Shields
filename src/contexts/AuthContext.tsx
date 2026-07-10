@@ -1,6 +1,6 @@
-import { createContext, useContext, ReactNode } from "react";
-import { useConvexAuth, useAuthActions } from "@convex-dev/auth/react";
-import { useQuery } from "convex/react";
+import { createContext, useContext, useEffect, ReactNode } from "react";
+import { useAuth as useWorkOSAuth } from "@workos-inc/authkit-react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 
 interface AuthUser {
@@ -14,60 +14,62 @@ interface AuthContextType {
   user: AuthUser | null;
   loading: boolean;
   isAdmin: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, fullName: string) => Promise<void>;
+  signIn: (email?: string, password?: string) => Promise<void>;
+  signUp: (email?: string, password?: string) => Promise<void>;
   signOut: () => Promise<void>;
   signInWithGoogle: () => Promise<void>;
 }
 
 const fallbackAuthContext: AuthContextType = {
   user: null,
-  loading: false,
+  loading: true,
   isAdmin: false,
-  signIn: async () => { throw new Error("Auth not initialized"); },
-  signUp: async () => { throw new Error("Auth not initialized"); },
-  signOut: async () => { throw new Error("Auth not initialized"); },
-  signInWithGoogle: async () => { throw new Error("Auth not initialized"); },
+  signIn: async () => {},
+  signUp: async () => {},
+  signOut: async () => {},
+  signInWithGoogle: async () => {},
 };
 
 const AuthContext = createContext<AuthContextType>(fallbackAuthContext);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const { isLoading, isAuthenticated } = useConvexAuth();
-  const { signIn: convexSignIn, signOut: convexSignOut } = useAuthActions();
-  const currentUser = useQuery(api.users.current);
-  const isAdminQuery = useQuery(api.users.currentUserIsAdmin);
+  const { user: workosUser, isLoading, signIn: workosSignIn, signUp: workosSignUp, signOut: workosSignOut } = useWorkOSAuth();
+  const createProfile = useMutation(api.users.createProfile);
+  const isAdmin = useQuery(api.users.isAdmin, workosUser?.id ? { userId: workosUser.id } : "skip");
 
-  const isAdmin = isAdminQuery ?? false;
+  useEffect(() => {
+    if (workosUser?.id) {
+      createProfile({
+        userId: workosUser.id,
+        fullName: `${workosUser.firstName ?? ""} ${workosUser.lastName ?? ""}`.trim() || undefined,
+        email: workosUser.email ?? undefined,
+      });
+    }
+  }, [workosUser?.id]);
 
-  const signIn = async (email: string, password: string) => {
-    await convexSignIn("password", { email, password });
+  const signIn = async () => {
+    await workosSignIn({});
   };
 
-  const signUp = async (email: string, password: string, fullName: string) => {
-    await convexSignIn("password", { email, password, name: fullName });
+  const signUp = async () => {
+    await workosSignUp({});
   };
 
   const signInWithGoogle = async () => {
-    await convexSignIn("google", { redirectTo: window.location.origin });
+    await workosSignIn({});
   };
 
-  const signOut = async () => {
-    await convexSignOut();
-  };
-
-  const user: AuthUser | null =
-    isAuthenticated && currentUser
-      ? {
-          id: currentUser._id,
-          email: currentUser.profile?.email ?? undefined,
-          name: currentUser.profile?.fullName ?? undefined,
-          isAdmin: currentUser.isAdmin,
-        }
-      : null;
+  const user: AuthUser | null = workosUser
+    ? {
+        id: workosUser.id,
+        email: workosUser.email ?? undefined,
+        name: `${workosUser.firstName ?? ""} ${workosUser.lastName ?? ""}`.trim() || undefined,
+        isAdmin: isAdmin ?? false,
+      }
+    : null;
 
   return (
-    <AuthContext.Provider value={{ user, loading: isLoading, isAdmin, signIn, signUp, signOut, signInWithGoogle }}>
+    <AuthContext.Provider value={{ user, loading: isLoading, isAdmin: isAdmin ?? false, signIn, signUp, signOut, signInWithGoogle }}>
       {children}
     </AuthContext.Provider>
   );

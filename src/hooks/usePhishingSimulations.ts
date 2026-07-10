@@ -11,7 +11,7 @@ export interface PhishingSimulationRow {
   difficultyLevel: string;
   content: Record<string, unknown>;
   isPhishing: boolean;
-  createdBy: Id<"users">;
+  createdBy: string;
 }
 
 export interface SimulationFormData {
@@ -28,7 +28,7 @@ export const usePhishingSimulations = () => {
   const updateSimulationMut = useMutation(api.phishingSimulations.update);
   const deleteSimulationMut = useMutation(api.phishingSimulations.remove);
 
-  const createSimulation = async (formData: SimulationFormData) => {
+  const createSimulation = async (formData: SimulationFormData, userId: string) => {
     try {
       await createSimulationMut({
         title: formData.title,
@@ -36,6 +36,7 @@ export const usePhishingSimulations = () => {
         difficultyLevel: formData.difficultyLevel,
         content: formData.content,
         isPhishing: formData.isPhishing,
+        createdBy: userId,
       });
       toast.success("Simulation created");
       return true;
@@ -46,7 +47,7 @@ export const usePhishingSimulations = () => {
     }
   };
 
-  const updateSimulation = async (id: string, formData: SimulationFormData) => {
+  const updateSimulation = async (id: string, formData: SimulationFormData, userId: string) => {
     try {
       await updateSimulationMut({
         id: id as Id<"phishingSimulations">,
@@ -55,6 +56,7 @@ export const usePhishingSimulations = () => {
         difficultyLevel: formData.difficultyLevel,
         content: formData.content,
         isPhishing: formData.isPhishing,
+        userId,
       });
       toast.success("Simulation updated");
       return true;
@@ -65,9 +67,9 @@ export const usePhishingSimulations = () => {
     }
   };
 
-  const deleteSimulation = async (id: string) => {
+  const deleteSimulation = async (id: string, userId: string) => {
     try {
-      await deleteSimulationMut({ id: id as Id<"phishingSimulations"> });
+      await deleteSimulationMut({ id: id as Id<"phishingSimulations">, userId });
       toast.success("Simulation deleted");
       return true;
     } catch (error) {

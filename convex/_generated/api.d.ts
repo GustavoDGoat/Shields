@@ -8,7 +8,6 @@
  * @module
  */
 
-import type * as auth from "../auth.js";
 import type * as incidents from "../incidents.js";
 import type * as phishingSimulations from "../phishingSimulations.js";
 import type * as profiles from "../profiles.js";
@@ -25,7 +24,6 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
-  auth: typeof auth;
   incidents: typeof incidents;
   phishingSimulations: typeof phishingSimulations;
   profiles: typeof profiles;

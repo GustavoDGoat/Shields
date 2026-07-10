@@ -1,14 +1,12 @@
+import { v } from "convex/values";
 import { query } from "./_generated/server";
-import { getAuthUserId } from "@convex-dev/auth/server";
 
 export const list = query({
-  handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) return [];
-
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
     const isAdmin = await ctx.db
       .query("userRoles")
-      .withIndex("by_userId_role", (q) => q.eq("userId", userId).eq("role", "admin"))
+      .withIndex("by_userId_role", (q) => q.eq("userId", args.userId).eq("role", "admin"))
       .first();
     if (!isAdmin) return [];
 

@@ -13,15 +13,14 @@ import { motion } from 'framer-motion';
 import { Users, Trash2, Search, AlertTriangle, Loader2 } from 'lucide-react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../../../convex/_generated/api';
-import { Id } from '../../../../convex/_generated/dataModel';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 
 interface UserProfile {
-  _id: Id<"profiles">;
-  userId: Id<"users">;
+  _id: string;
+  userId: string;
   fullName: string | null;
   email: string | null;
   _creationTime: number;
@@ -34,16 +33,16 @@ const UserManagement = () => {
   const [deleteTarget, setDeleteTarget] = useState<UserProfile | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  const profiles = useQuery(api.profiles.list);
+  const profiles = useQuery(api.profiles.list, user?.id ? { userId: user.id } : "skip");
   const deleteUserMut = useMutation(api.userManagement.deleteUser);
 
   const users = (profiles ?? []) as UserProfile[];
 
   const handleDelete = async () => {
-    if (!deleteTarget) return;
+    if (!deleteTarget || !user) return;
     setDeleting(true);
     try {
-      await deleteUserMut({ userId: deleteTarget.userId });
+      await deleteUserMut({ targetUserId: deleteTarget.userId, adminUserId: user.id });
       toast.success(`User "${deleteTarget.fullName || deleteTarget.email}" has been removed`);
     } catch (err: any) {
       toast.error(err.message || 'Failed to delete user');
@@ -134,7 +133,7 @@ const UserManagement = () => {
                     </TableRow>
                   ) : (
                     filtered.map((u) => (
-                      <TableRow key={u._id.toString()} className="border-border/50 hover:bg-white/[0.03] transition-colors">
+                      <TableRow key={u._id} className="border-border/50 hover:bg-white/[0.03] transition-colors">
                         <TableCell className="font-medium text-sm">{u.fullName || '—'}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">{u.email || '—'}</TableCell>
                         <TableCell>

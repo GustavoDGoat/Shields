@@ -16,6 +16,7 @@ import FeedbackModal from './FeedbackModal';
 import SimulationResults from './SimulationResults';
 import { useMutation } from 'convex/react';
 import { api } from '../../../../convex/_generated/api';
+import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 
 const SCENARIO_COUNT = 15;
@@ -24,6 +25,7 @@ const POINTS_PER_CORRECT = 10;
 
 const PhishingSimulationTab = () => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [state, setState] = useState<SimulationState>({
     status: 'idle',
     currentIndex: 0,
@@ -113,21 +115,24 @@ const PhishingSimulationTab = () => {
       const percentage = Math.round((state.score / (state.scenarios.length * POINTS_PER_CORRECT)) * 100);
       const grade = percentage >= 70 ? 'A' : percentage >= 60 ? 'B' : percentage >= 50 ? 'C' : percentage >= 40 ? 'D' : percentage >= 29 ? 'E' : 'F';
 
-      try {
-        await saveResultMut({
-          score: finalScore,
-          totalQuestions: state.scenarios.length,
-          correctAnswers: correctCount,
-          grade,
-          completedAt: new Date().toISOString(),
-          timeTakenSeconds: totalTime,
-        });
-      } catch (error) {
-        toast({
-          title: "Warning",
-          description: "Could not save results. Your progress is shown locally.",
-          variant: "destructive"
-        });
+      if (user) {
+        try {
+          await saveResultMut({
+            userId: user.id,
+            score: finalScore,
+            totalQuestions: state.scenarios.length,
+            correctAnswers: correctCount,
+            grade,
+            completedAt: new Date().toISOString(),
+            timeTakenSeconds: totalTime,
+          });
+        } catch (error) {
+          toast({
+            title: "Warning",
+            description: "Could not save results. Your progress is shown locally.",
+            variant: "destructive"
+          });
+        }
       }
 
       setState(prev => ({ ...prev, status: 'completed' }));

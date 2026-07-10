@@ -51,7 +51,7 @@ const IncidentTrackingTab = () => {
     updateIncidentStatus,
     addAdminNote,
     deleteIncident,
-  } = useIncidents();
+  } = useIncidents(user?.id, hasDbAdminAccess);
 
   const userIncidents = incidents.filter((incident) => incident.studentId === user?.id);
 

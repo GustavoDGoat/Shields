@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { useQuery } from 'convex/react';
 import { api } from '../../../../convex/_generated/api';
+import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
@@ -35,7 +36,11 @@ const gradeColors: Record<string, string> = {
 };
 
 const AnalyticsTab = () => {
-  const results = useQuery(api.simulationResults.listByUser);
+  const { user } = useAuth();
+  const results = useQuery(
+    api.simulationResults.listByUser,
+    user ? { userId: user.id } : "skip"
+  );
 
   const sortedResults = (results ?? []) as SimulationResult[];
 

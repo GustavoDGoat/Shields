@@ -6,7 +6,7 @@ import { Id } from "../../convex/_generated/dataModel";
 export interface IncidentData {
   _id: Id<"incidents">;
   _creationTime: number;
-  studentId: Id<"users">;
+  studentId: string;
   incidentType: "phishing" | "malware" | "identity_theft" | "data_breach" | "unauthorized_access" | "other";
   description: string;
   status: "pending" | "investigating" | "resolved";
@@ -18,10 +18,13 @@ export interface IncidentData {
   studentEmail: string;
 }
 
-export const useIncidents = () => {
-  const incidents = useQuery(api.incidents.list);
-  const createIncidentMut = useMutation(api.incidents.create);
+export const useIncidents = (userId: string | undefined, isAdmin: boolean) => {
+  const incidents = useQuery(
+    api.incidents.list,
+    userId ? { userId, isAdmin } : "skip",
+  );
   const generateUploadUrlMut = useMutation(api.incidents.generateUploadUrl);
+  const createIncidentMut = useMutation(api.incidents.create);
   const updateStatusMut = useMutation(api.incidents.updateStatus);
   const addNoteMut = useMutation(api.incidents.addAdminNote);
   const deleteIncidentMut = useMutation(api.incidents.remove);
@@ -32,6 +35,8 @@ export const useIncidents = () => {
     urgency: string;
     file?: File;
   }) => {
+    if (!userId) throw new Error("User not authenticated");
+
     let evidenceStorageId: Id<"_storage"> | undefined;
 
     if (data.file) {
@@ -48,6 +53,7 @@ export const useIncidents = () => {
     }
 
     await createIncidentMut({
+      studentId: userId,
       incidentType: data.type as any,
       description: data.description,
       urgencyLevel: data.urgency as any,
@@ -60,6 +66,7 @@ export const useIncidents = () => {
   };
 
   const updateIncidentStatus = async (id: string, status: string) => {
+    if (!userId) return;
     const normalizedStatus = status.toLowerCase() as "pending" | "investigating" | "resolved";
     const allowedStatuses = ["pending", "investigating", "resolved"];
 
@@ -69,7 +76,11 @@ export const useIncidents = () => {
     }
 
     try {
-      await updateStatusMut({ id: id as Id<"incidents">, status: normalizedStatus });
+      await updateStatusMut({
+        id: id as Id<"incidents">,
+        status: normalizedStatus,
+        userId,
+      });
       toast.success("Status updated", {
         description: `Incident status changed to ${normalizedStatus}.`,
       });
@@ -80,8 +91,9 @@ export const useIncidents = () => {
   };
 
   const addAdminNote = async (id: string, note: string) => {
+    if (!userId) return;
     try {
-      await addNoteMut({ id: id as Id<"incidents">, note });
+      await addNoteMut({ id: id as Id<"incidents">, note, userId });
       toast.success("Note saved", {
         description: "Your response has been added to the incident.",
       });
@@ -92,8 +104,9 @@ export const useIncidents = () => {
   };
 
   const deleteIncident = async (id: string) => {
+    if (!userId) return;
     try {
-      await deleteIncidentMut({ id: id as Id<"incidents"> });
+      await deleteIncidentMut({ id: id as Id<"incidents">, userId });
       toast.success("Incident deleted", {
         description: "The incident report has been removed.",
       });
