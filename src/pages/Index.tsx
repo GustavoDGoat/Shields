@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import Navbar from "@/components/landing/Navbar";
 import HeroSection from "@/components/landing/HeroSection";
@@ -8,9 +10,16 @@ import CTASection from "@/components/landing/CTASection";
 import Footer from "@/components/landing/Footer";
 
 const Index = () => {
-  const { loading } = useAuth();
+  const navigate = useNavigate();
+  const { user, loading } = useAuth();
 
-  if (loading) {
+  useEffect(() => {
+    if (!loading && user) {
+      navigate("/dashboard/training", { replace: true });
+    }
+  }, [user, loading, navigate]);
+
+  if (loading || user) {
     return (
       <main className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />

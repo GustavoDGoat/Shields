@@ -55,6 +55,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     await workosSignUp({});
   };
 
+  const signOut = async () => {
+    await workosSignOut({});
+  };
+
   const signInWithGoogle = async () => {
     await workosSignIn({});
   };
