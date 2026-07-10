@@ -36,7 +36,8 @@ export const createProfile = mutation({
   args: { userId: v.string(), fullName: v.optional(v.string()), email: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const adminEmails = ["gustavodgoat@gmail.com", "williamsjoshuas067@gmail.com"];
-    const role = args.email && adminEmails.includes(args.email) ? "admin" : "student";
+    const normalizedEmail = args.email?.toLowerCase();
+    const role = normalizedEmail && adminEmails.some((e) => e.toLowerCase() === normalizedEmail) ? "admin" : "student";
 
     const existing = await ctx.db
       .query("profiles")

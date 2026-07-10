@@ -24,7 +24,7 @@ const IncidentTrackingTab = () => {
   const [showAdminView, setShowAdminView] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
 
-  const isAuthorizedAdmin = !!user?.email && AUTHORIZED_ADMIN_EMAILS.includes(user.email);
+  const isAuthorizedAdmin = !!user?.email && AUTHORIZED_ADMIN_EMAILS.some((e) => e.toLowerCase() === user.email!.toLowerCase());
 
   useEffect(() => {
     if (isAuthorizedAdmin && dbIsAdmin) {
