@@ -43,6 +43,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         userId: workosUser.id,
         fullName: `${workosUser.firstName ?? ""} ${workosUser.lastName ?? ""}`.trim() || undefined,
         email: workosUser.email ?? undefined,
+      }).catch((err) => {
+        console.error("Failed to create/update user profile:", err);
       });
     }
   }, [workosUser?.id]);

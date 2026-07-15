@@ -14,35 +14,28 @@ import { useIncidents } from '@/hooks/useIncidents';
 import { SkeletonCard, SkeletonTable } from '@/components/ui/skeleton-card';
 import AuthModal from '@/components/auth/AuthModal';
 
-const AUTHORIZED_ADMIN_EMAILS = [
-  'gustavodgoat@gmail.com',
-  'williamsjoshuas067@gmail.com',
-];
-
 const IncidentTrackingTab = () => {
   const { user, loading: authLoading, isAdmin: dbIsAdmin, signOut } = useAuth();
   const [showAdminView, setShowAdminView] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
 
-  const isAuthorizedAdmin = !!user?.email && AUTHORIZED_ADMIN_EMAILS.some((e) => e.toLowerCase() === user.email!.toLowerCase());
-
   useEffect(() => {
-    if (isAuthorizedAdmin && dbIsAdmin) {
+    if (dbIsAdmin) {
       const stored = sessionStorage.getItem('adminView');
       setShowAdminView(stored !== null ? stored === 'true' : true);
     } else {
       setShowAdminView(false);
     }
-  }, [dbIsAdmin, isAuthorizedAdmin]);
+  }, [dbIsAdmin]);
 
   useEffect(() => {
-    if (isAuthorizedAdmin && dbIsAdmin) {
+    if (dbIsAdmin) {
       sessionStorage.setItem('adminView', String(showAdminView));
     }
-  }, [showAdminView, dbIsAdmin, isAuthorizedAdmin]);
+  }, [showAdminView, dbIsAdmin]);
 
-  const isAdminView = showAdminView && isAuthorizedAdmin;
-  const hasDbAdminAccess = dbIsAdmin && isAuthorizedAdmin;
+  const isAdminView = showAdminView && dbIsAdmin;
+  const hasDbAdminAccess = dbIsAdmin;
 
   const {
     incidents,
@@ -63,19 +56,7 @@ const IncidentTrackingTab = () => {
       return;
     }
 
-    if (!isAuthorizedAdmin) {
-      toast.error('Unauthorized: You do not have permission to access Admin Mode.', {
-        description: 'Contact an administrator if you believe this is an error.',
-      });
-      return;
-    }
-
     setShowAdminView(checked);
-    if (checked) {
-      toast.success('Admin access granted', {
-        description: 'You have admin privileges.',
-      });
-    }
   };
 
   const handleSubmitReport = async (data: {
@@ -209,7 +190,7 @@ const IncidentTrackingTab = () => {
             <SkeletonCard rows={3} />
           </div>
         )
-      ) : isAdminView && isAuthorizedAdmin ? (
+      ) : isAdminView ? (
         <AdminConsole
           incidents={incidents}
           onUpdateStatus={handleUpdateStatus}

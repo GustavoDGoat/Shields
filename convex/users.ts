@@ -44,12 +44,17 @@ export const createProfile = mutation({
       .withIndex("by_userId", (q) => q.eq("userId", args.userId))
       .first();
     if (existing) {
-      const existingRole = await ctx.db
-        .query("userRoles")
-        .withIndex("by_userId_role", (q) => q.eq("userId", args.userId).eq("role", "admin"))
-        .first();
-      if (role === "admin" && !existingRole) {
-        await ctx.db.insert("userRoles", { userId: args.userId, role: "admin" });
+      if (role === "admin") {
+        const existingAdminRole = await ctx.db
+          .query("userRoles")
+          .withIndex("by_userId_role", (q) => q.eq("userId", args.userId).eq("role", "admin"))
+          .first();
+        if (!existingAdminRole) {
+          await ctx.db.insert("userRoles", { userId: args.userId, role: "admin" });
+        }
+      }
+      if (args.email && existing.email !== args.email) {
+        await ctx.db.patch(existing._id, { email: args.email });
       }
       return existing._id;
     }
