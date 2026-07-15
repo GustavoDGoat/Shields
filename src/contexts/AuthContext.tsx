@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, ReactNode } from "react";
 import { useAuth as useWorkOSAuth } from "@workos-inc/authkit-react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
@@ -14,6 +14,7 @@ interface AuthContextType {
   user: AuthUser | null;
   loading: boolean;
   isAdmin: boolean;
+  authReady: boolean;
   signIn: (email?: string, password?: string) => Promise<void>;
   signUp: (email?: string, password?: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -24,6 +25,7 @@ const fallbackAuthContext: AuthContextType = {
   user: null,
   loading: true,
   isAdmin: false,
+  authReady: false,
   signIn: async () => {},
   signUp: async () => {},
   signOut: async () => {},
@@ -36,6 +38,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const { user: workosUser, isLoading, signIn: workosSignIn, signUp: workosSignUp, signOut: workosSignOut } = useWorkOSAuth();
   const createProfile = useMutation(api.users.createProfile);
   const isAdmin = useQuery(api.users.isAdmin, workosUser?.id ? { userId: workosUser.id } : "skip");
+  const initialLoadDone = useRef(false);
+  if (!isLoading) initialLoadDone.current = true;
 
   useEffect(() => {
     if (workosUser?.id) {
@@ -75,7 +79,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     : null;
 
   return (
-    <AuthContext.Provider value={{ user, loading: isLoading, isAdmin: isAdmin ?? false, signIn, signUp, signOut, signInWithGoogle }}>
+    <AuthContext.Provider value={{ user, loading: isLoading, isAdmin: isAdmin ?? false, authReady: initialLoadDone.current, signIn, signUp, signOut, signInWithGoogle }}>
       {children}
     </AuthContext.Provider>
   );

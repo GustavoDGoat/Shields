@@ -15,7 +15,9 @@ const Index = () => {
 
   useEffect(() => {
     if (!loading && user) {
-      navigate("/dashboard/training", { replace: true });
+      const returnPath = sessionStorage.getItem('returnPath');
+      sessionStorage.removeItem('returnPath');
+      navigate(returnPath || "/dashboard/training", { replace: true });
     }
   }, [user, loading, navigate]);
 
