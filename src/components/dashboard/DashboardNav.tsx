@@ -1,7 +1,8 @@
-import { Shield, BookOpen, AlertTriangle, Crosshair, BarChart3, Home } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Shield, BookOpen, AlertTriangle, Crosshair, BarChart3, Home, LogOut } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
 
 interface DashboardNavProps {
   activeTab: string;
@@ -16,6 +17,14 @@ const tabs = [
 ];
 
 const DashboardNav = ({ activeTab, setActiveTab }: DashboardNavProps) => {
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/", { replace: true });
+  };
+
   return (
     <>
       {/* Desktop Top Nav */}
@@ -57,13 +66,16 @@ const DashboardNav = ({ activeTab, setActiveTab }: DashboardNavProps) => {
               ))}
             </div>
 
-            <Link
-              to="/landing"
-              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <Home className="w-4 h-4" />
-              <span className="hidden sm:inline">Back to Home</span>
-            </Link>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleSignOut}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"
+                title="Sign out"
+              >
+                <LogOut className="w-4 h-4" />
+                <span className="hidden sm:inline">Sign Out</span>
+              </button>
+            </div>
           </div>
         </div>
       </nav>
@@ -105,13 +117,16 @@ const DashboardNav = ({ activeTab, setActiveTab }: DashboardNavProps) => {
               Cyber<span className="text-primary">Shield</span>
             </span>
           </Link>
-          <Link
-            to="/landing"
-            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <Home className="w-4 h-4" />
-            <span>Home</span>
-          </Link>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleSignOut}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"
+              title="Sign out"
+            >
+              <LogOut className="w-4 h-4" />
+              <span>Sign Out</span>
+            </button>
+          </div>
         </div>
       </nav>
     </>
