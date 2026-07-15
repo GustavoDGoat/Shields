@@ -11,6 +11,26 @@ export const listByUser = query({
   },
 });
 
+export const listAll = query({
+  args: { adminUserId: v.string() },
+  handler: async (ctx, args) => {
+    const admin = await ctx.db
+      .query("userRoles")
+      .withIndex("by_userId_role", (q) => q.eq("userId", args.adminUserId).eq("role", "admin"))
+      .first();
+    if (!admin) return [];
+
+    const profiles = await ctx.db.query("profiles").collect();
+    const profileMap = new Map(profiles.map((p) => [p.userId, { fullName: p.fullName, email: p.email }]));
+    const results = await ctx.db.query("simulationResults").order("desc").collect();
+    return results.map((r) => ({
+      ...r,
+      userName: profileMap.get(r.userId)?.fullName ?? "Unknown",
+      userEmail: profileMap.get(r.userId)?.email ?? "",
+    }));
+  },
+});
+
 export const create = mutation({
   args: {
     userId: v.string(),
