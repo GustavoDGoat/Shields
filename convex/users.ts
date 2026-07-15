@@ -36,15 +36,18 @@ export const createProfile = mutation({
   args: { userId: v.string(), fullName: v.optional(v.string()), email: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const adminEmails = ["gustavodgoat@gmail.com", "williamsjoshuas067@gmail.com"];
-    const normalizedEmail = args.email?.toLowerCase();
-    const role = normalizedEmail && adminEmails.some((e) => e.toLowerCase() === normalizedEmail) ? "admin" : "student";
 
     const existing = await ctx.db
       .query("profiles")
       .withIndex("by_userId", (q) => q.eq("userId", args.userId))
       .first();
+
+    const effectiveEmail = args.email || existing?.email;
+    const normalizedEffective = effectiveEmail?.toLowerCase();
+    const shouldBeAdmin = normalizedEffective && adminEmails.some((e) => e.toLowerCase() === normalizedEffective);
+
     if (existing) {
-      if (role === "admin") {
+      if (shouldBeAdmin) {
         const existingAdminRole = await ctx.db
           .query("userRoles")
           .withIndex("by_userId_role", (q) => q.eq("userId", args.userId).eq("role", "admin"))
@@ -72,7 +75,7 @@ export const createProfile = mutation({
     if (existingRoles.length === 0) {
       await ctx.db.insert("userRoles", {
         userId: args.userId,
-        role,
+        role: shouldBeAdmin ? "admin" : "student",
       });
     }
     return args.userId;
