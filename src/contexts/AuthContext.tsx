@@ -1,7 +1,9 @@
-import { createContext, useContext, useEffect, useRef, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useRef, useCallback, ReactNode } from "react";
 import { useAuth as useWorkOSAuth } from "@workos-inc/authkit-react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
+
+const CACHE_KEY = "cybershield_session";
 
 interface AuthUser {
   id: string;
@@ -34,10 +36,38 @@ const fallbackAuthContext: AuthContextType = {
 
 const AuthContext = createContext<AuthContextType>(fallbackAuthContext);
 
+const getCached = (): AuthUser | null => {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const d = JSON.parse(raw);
+    if (!d || !d.id) return null;
+    return { id: d.id, email: d.email || undefined, name: d.name || undefined, isAdmin: !!d.isAdmin };
+  } catch {
+    return null;
+  }
+};
+
+const setCached = (u: AuthUser) => {
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify(u)); } catch {}
+};
+
+const clearCached = () => {
+  try { localStorage.removeItem(CACHE_KEY); } catch {}
+};
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const { user: workosUser, isLoading, signIn: workosSignIn, signUp: workosSignUp, signOut: workosSignOut } = useWorkOSAuth();
   const createProfile = useMutation(api.users.createProfile);
-  const isAdmin = useQuery(api.users.isAdmin, workosUser?.id ? { userId: workosUser.id } : "skip");
+  const dbIsAdmin = useQuery(api.users.isAdmin, workosUser?.id ? { userId: workosUser.id } : "skip");
+
+  const cachedRef = useRef<AuthUser | null>(null);
+  const [cachedUser, setCachedUser] = useState<AuthUser | null>(() => {
+    const c = getCached();
+    cachedRef.current = c;
+    return c;
+  });
+  const [hydrating, setHydrating] = useState(true);
   const initialLoadDone = useRef(false);
   if (!isLoading) initialLoadDone.current = true;
 
@@ -53,33 +83,79 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [workosUser?.id]);
 
-  const signIn = async () => {
-    await workosSignIn({});
-  };
+  useEffect(() => {
+    if (!isLoading) {
+      setHydrating(false);
+      if (!workosUser) {
+        clearCached();
+        setCachedUser(null);
+        cachedRef.current = null;
+      }
+    }
+  }, [isLoading]);
 
-  const signUp = async () => {
-    await workosSignUp({});
-  };
+  useEffect(() => {
+    if (workosUser) {
+      const u: AuthUser = {
+        id: workosUser.id,
+        email: workosUser.email ?? undefined,
+        name: `${workosUser.firstName ?? ""} ${workosUser.lastName ?? ""}`.trim() || undefined,
+        isAdmin: dbIsAdmin ?? false,
+      };
+      cachedRef.current = u;
+      setCached(u);
+      setCachedUser(u);
+    }
+  }, [workosUser?.id]);
 
-  const signOut = async () => {
-    await workosSignOut({});
-  };
-
-  const signInWithGoogle = async () => {
-    await workosSignIn({});
-  };
+  useEffect(() => {
+    if (workosUser?.id && dbIsAdmin !== undefined) {
+      const updated: AuthUser = {
+        id: workosUser.id,
+        email: workosUser.email ?? undefined,
+        name: `${workosUser.firstName ?? ""} ${workosUser.lastName ?? ""}`.trim() || undefined,
+        isAdmin: dbIsAdmin,
+      };
+      cachedRef.current = updated;
+      setCached(updated);
+      setCachedUser(updated);
+    }
+  }, [dbIsAdmin, workosUser?.id]);
 
   const user: AuthUser | null = workosUser
     ? {
         id: workosUser.id,
         email: workosUser.email ?? undefined,
         name: `${workosUser.firstName ?? ""} ${workosUser.lastName ?? ""}`.trim() || undefined,
-        isAdmin: isAdmin ?? false,
+        isAdmin: dbIsAdmin ?? (cachedRef.current?.isAdmin ?? false),
       }
-    : null;
+    : hydrating
+      ? cachedUser
+      : null;
+
+  const loading = isLoading || (hydrating && !workosUser);
+
+  const signIn = useCallback(async () => { await workosSignIn({}); }, [workosSignIn]);
+  const signUp = useCallback(async () => { await workosSignUp({}); }, [workosSignUp]);
+  const signOut = useCallback(async () => {
+    clearCached();
+    setCachedUser(null);
+    cachedRef.current = null;
+    await workosSignOut({});
+  }, [workosSignOut]);
+  const signInWithGoogle = useCallback(async () => { await workosSignIn({}); }, [workosSignIn]);
 
   return (
-    <AuthContext.Provider value={{ user, loading: isLoading, isAdmin: isAdmin ?? false, authReady: initialLoadDone.current, signIn, signUp, signOut, signInWithGoogle }}>
+    <AuthContext.Provider value={{
+      user,
+      loading,
+      isAdmin: (user?.isAdmin) ?? false,
+      authReady: initialLoadDone.current,
+      signIn,
+      signUp,
+      signOut,
+      signInWithGoogle,
+    }}>
       {children}
     </AuthContext.Provider>
   );
