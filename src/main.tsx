@@ -8,7 +8,7 @@ const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL);
 
 createRoot(document.getElementById("root")!).render(
   <ConvexProvider client={convex}>
-    <AuthKitProvider clientId="client_01KX0GXFVV5KS8B20BEHVATPDS">
+    <AuthKitProvider clientId="client_01KX0GXFVV5KS8B20BEHVATPDS" redirectUri={window.location.origin + (import.meta.env.VITE_BASE_PATH || "/")}>
       <App />
     </AuthKitProvider>
   </ConvexProvider>,
