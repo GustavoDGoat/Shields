@@ -11,6 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../../../convex/_generated/api';
 import { Id } from '../../../../convex/_generated/dataModel';
+import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { Video, Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
 
@@ -38,6 +39,7 @@ export const extractYouTubeId = (url: string): string | null => {
 };
 
 const VideoManagement = () => {
+  const { user } = useAuth();
   const videos = useQuery(api.trainingVideos.list);
   const createVideoMut = useMutation(api.trainingVideos.create);
   const updateVideoMut = useMutation(api.trainingVideos.update);
@@ -95,6 +97,10 @@ const VideoManagement = () => {
       toast.error('Invalid YouTube URL. Please use a valid youtube.com or youtu.be link.');
       return;
     }
+    if (!user) {
+      toast.error('You must be signed in to manage videos');
+      return;
+    }
 
     setSaving(true);
     try {
@@ -105,6 +111,7 @@ const VideoManagement = () => {
           description: description.trim(),
           youtubeUrl: youtubeUrl.trim(),
           category: finalCategory,
+          userId: user.id,
         });
         toast.success('Video updated');
       } else {
@@ -113,6 +120,7 @@ const VideoManagement = () => {
           description: description.trim(),
           youtubeUrl: youtubeUrl.trim(),
           category: finalCategory,
+          userId: user.id,
         });
         toast.success('Video added');
       }
@@ -126,8 +134,12 @@ const VideoManagement = () => {
   };
 
   const handleDelete = async (id: Id<"trainingVideos">) => {
+    if (!user) {
+      toast.error('You must be signed in to manage videos');
+      return;
+    }
     try {
-      await deleteVideoMut({ id });
+      await deleteVideoMut({ id, userId: user.id });
       toast.success('Video deleted');
     } catch (error) {
       toast.error('Failed to delete video');
