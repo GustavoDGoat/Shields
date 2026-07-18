@@ -8,6 +8,14 @@ A comprehensive cybersecurity awareness and incident management platform built w
 
 ## Features
 
+### 📋 Mandatory Baseline Questionnaire
+- **First-Login Gate** — Every user must complete a one-time baseline cybersecurity assessment before accessing any part of the platform; all protected routes redirect to the questionnaire until it is done.
+- **Randomized Questions** — Each user answers 5 questions randomly sampled from a pool of 10, so no two users see the exact same combination. Questions measure knowledge, attitude, and behavior around real campus threat scenarios.
+- **Instant Grading** — Scores are graded on the A–F scale (10 points per correct answer) with a full per-question review shown at the end.
+- **Answer-Level Storage** — Every individual answer (question, selected option, correctness) is stored in Convex for research analysis.
+- **One-Time Enforcement** — The backend rejects repeat submissions; completed users who revisit the questionnaire route are redirected to the dashboard.
+- **Analytics Integration** — The baseline score, grade, and full answer breakdown appear in a dedicated section of the Analytics tab.
+
 ### 🛡️ Incident Tracking
 - **Report Incidents** — Users can report security incidents (phishing, malware, identity theft, data breaches, unauthorized access) with descriptions, urgency levels, and optional evidence file uploads.
 - **Track Status** — Students can view their reported incidents grouped by status (Pending Review, Under Investigation, Resolved).
@@ -109,6 +117,7 @@ shieldwise-labs-main/
 │   ├── incidents.ts          # Incident CRUD operations
 │   ├── phishingSimulations.ts # Phishing scenario management
 │   ├── simulationResults.ts   # Simulation results storage
+│   ├── questionnaireResults.ts # Baseline questionnaire results (one-time, answer-level)
 │   ├── trainingVideos.ts     # Training video library
 │   ├── profiles.ts           # User profile queries
 │   ├── userRoles.ts          # Role-based access helpers
@@ -117,7 +126,8 @@ shieldwise-labs-main/
 │   └── _generated/           # Auto-generated Convex type bindings
 ├── src/
 │   ├── components/
-│   │   ├── auth/             # AuthModal, ProtectedRoute, PublicOnlyRoute
+│   │   ├── auth/             # AuthModal, ProtectedRoute, PublicOnlyRoute, QuestionnaireGate
+│   │   ├── questionnaire/    # Baseline assessment flow + question bank
 │   │   ├── dashboard/
 │   │   │   ├── incidents/    # Incident tracking, admin console, report form
 │   │   │   ├── phishing/     # Simulation UI, scenario management, results
@@ -146,6 +156,7 @@ shieldwise-labs-main/
 | `incidents` | Security incident reports | `by_studentId`, `by_status` |
 | `phishingSimulations` | Phishing simulation scenarios | `by_createdBy` |
 | `simulationResults` | User simulation attempt results | `by_userId`, `by_userId_completedAt` |
+| `questionnaireResults` | One-time baseline questionnaire results with per-question answers | `by_userId` |
 | `trainingVideos` | Training video library | `by_category` |
 
 ---
@@ -242,6 +253,7 @@ All backend logic is exposed through Convex queries and mutations:
 | `trainingVideos.list` | — | All videos sorted by category |
 | `phishingSimulations.list` | — | All scenarios |
 | `simulationResults.listByUser` | `{ userId }` | User's results sorted by completion date |
+| `questionnaireResults.getMyResult` | `{ userId }` | User's baseline questionnaire result (or `null`) |
 | `users.getProfile` | `{ userId }` | User profile + roles |
 | `users.isAdmin` | `{ userId }` | Boolean |
 | `profiles.list` | `{ userId }` | All profiles with roles (admin only) |
@@ -262,6 +274,7 @@ All backend logic is exposed through Convex queries and mutations:
 | `phishingSimulations.update` | `{ id, ...fields, userId }` | Edit scenario (admin) |
 | `phishingSimulations.remove` | `{ id, userId }` | Delete scenario (admin) |
 | `simulationResults.create` | `{ userId, score, totalQuestions, correctAnswers, grade, completedAt, timeTakenSeconds? }` | Save simulation result |
+| `questionnaireResults.create` | `{ userId, score, totalQuestions, correctAnswers, grade, completedAt, timeTakenSeconds?, answers }` | Save baseline result (rejects if already completed) |
 | `users.createProfile` | `{ userId, fullName?, email? }` | Create/ensure user profile + role |
 | `userManagement.deleteUser` | `{ targetUserId, adminUserId }` | Delete user and all data (admin) |
 

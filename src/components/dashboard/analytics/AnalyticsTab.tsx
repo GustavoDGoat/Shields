@@ -14,11 +14,18 @@ import {
   ShieldCheck,
   Shield,
   Users,
+  ClipboardList,
+  CheckCircle2,
+  XCircle,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { useQuery } from 'convex/react';
 import { api } from '../../../../convex/_generated/api';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { questionnairePool } from '@/components/questionnaire/questionnaireData';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, BarChart, Bar,
@@ -36,6 +43,18 @@ interface SimulationResult {
   grade: string;
   completedAt: string;
   timeTakenSeconds: number | null;
+}
+
+interface QuestionnaireResult {
+  _id: string;
+  userId: string;
+  score: number;
+  totalQuestions: number;
+  correctAnswers: number;
+  grade: string;
+  completedAt: string;
+  timeTakenSeconds?: number;
+  answers: { questionId: string; selectedOption: string; isCorrect: boolean }[];
 }
 
 const gradeColors: Record<string, string> = {
@@ -61,6 +80,10 @@ const AnalyticsTab = () => {
   const allResults = useQuery(
     api.simulationResults.listAll,
     user && isAdmin && showAdminView ? { adminUserId: user.id } : 'skip',
+  );
+  const questionnaireResult = useQuery(
+    api.questionnaireResults.getMyResult,
+    user ? { userId: user.id } : 'skip',
   );
 
   const isAdminView = isAdmin && showAdminView;
@@ -110,16 +133,17 @@ const AnalyticsTab = () => {
       {isAdminView ? (
         <AdminAnalytics results={sortedResults} />
       ) : (
-        <UserAnalytics results={sortedResults} />
+        <UserAnalytics results={sortedResults} questionnaire={questionnaireResult ?? null} />
       )}
     </div>
   );
 };
 
-const UserAnalytics = ({ results }: { results: SimulationResult[] }) => {
+const UserAnalytics = ({ results, questionnaire }: { results: SimulationResult[]; questionnaire: QuestionnaireResult | null }) => {
   if (results.length === 0) {
     return (
       <>
+        {questionnaire && <BaselineQuestionnaireCard result={questionnaire} />}
         <Card className="bg-card border-border">
           <CardContent className="py-16 text-center">
             <FileX className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -147,6 +171,7 @@ const UserAnalytics = ({ results }: { results: SimulationResult[] }) => {
 
   return (
     <>
+      {questionnaire && <BaselineQuestionnaireCard result={questionnaire} />}
       <StatsGrid
         items={[
           { icon: Trophy, label: 'Best Score', value: `${bestScore}%`, iconColor: 'text-yellow-500' },
@@ -159,6 +184,106 @@ const UserAnalytics = ({ results }: { results: SimulationResult[] }) => {
       <CorrectAnswersChart data={chartData} />
       <SimulationHistory results={results} />
     </>
+  );
+};
+
+const BaselineQuestionnaireCard = ({ result }: { result: QuestionnaireResult }) => {
+  const [expanded, setExpanded] = useState(false);
+  const pct = Math.round((result.score / (result.totalQuestions * 10)) * 100);
+  const colorClass = gradeColors[result.grade] || 'text-muted-foreground bg-muted/30 border-border';
+  const questionById = new Map(questionnairePool.map((q) => [q.id, q]));
+
+  return (
+    <Card className="bg-card border-border">
+      <CardHeader>
+        <CardTitle className="text-lg flex items-center gap-2">
+          <ClipboardList className="h-5 w-5 text-primary" />
+          Baseline Security Assessment
+        </CardTitle>
+        <CardDescription>
+          Your one-time onboarding questionnaire score — completed{' '}
+          {new Date(result.completedAt).toLocaleDateString('en-NG', {
+            day: 'numeric', month: 'short', year: 'numeric',
+          })}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="p-4 bg-muted/30 rounded-lg text-center">
+            <p className="text-2xl font-bold text-primary">{pct}%</p>
+            <p className="text-xs text-muted-foreground">Baseline Score</p>
+          </div>
+          <div className="p-4 bg-muted/30 rounded-lg text-center">
+            <Badge className={cn('text-lg px-3 py-1 border', colorClass)}>{result.grade}</Badge>
+            <p className="text-xs text-muted-foreground mt-1">Grade</p>
+          </div>
+          <div className="p-4 bg-muted/30 rounded-lg text-center">
+            <p className="text-2xl font-bold text-foreground">{result.correctAnswers}/{result.totalQuestions}</p>
+            <p className="text-xs text-muted-foreground">Correct Answers</p>
+          </div>
+          <div className="p-4 bg-muted/30 rounded-lg text-center">
+            <p className="text-2xl font-bold text-foreground">
+              {result.timeTakenSeconds ? `${Math.floor(result.timeTakenSeconds / 60)}m ${result.timeTakenSeconds % 60}s` : 'N/A'}
+            </p>
+            <p className="text-xs text-muted-foreground">Time Taken</p>
+          </div>
+        </div>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full text-muted-foreground"
+          onClick={() => setExpanded((e) => !e)}
+        >
+          {expanded ? (
+            <>Hide Answer Breakdown <ChevronUp className="h-4 w-4 ml-2" /></>
+          ) : (
+            <>View Answer Breakdown <ChevronDown className="h-4 w-4 ml-2" /></>
+          )}
+        </Button>
+
+        {expanded && (
+          <div className="space-y-3">
+            {result.answers.map((answer, index) => {
+              const question = questionById.get(answer.questionId);
+              if (!question) return null;
+              const selectedText = question.options.find((o) => o.key === answer.selectedOption)?.text ?? '';
+              const correctText = question.options
+                .filter((o) => question.correctOptions.includes(o.key))
+                .map((o) => `${o.key}. ${o.text}`)
+                .join(' / ');
+              return (
+                <div key={answer.questionId} className="p-4 bg-muted/30 rounded-lg space-y-2">
+                  <div className="flex items-start gap-2">
+                    {answer.isCorrect ? (
+                      <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
+                    ) : (
+                      <XCircle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
+                    )}
+                    <p className="text-sm font-medium text-foreground leading-relaxed">
+                      <span className="text-muted-foreground mr-1.5">Q{index + 1}.</span>
+                      {question.question}
+                    </p>
+                  </div>
+                  <div className="pl-7 space-y-1">
+                    <p className="text-xs text-muted-foreground">
+                      Your answer: <span className={answer.isCorrect ? 'text-green-400' : 'text-red-400'}>
+                        {answer.selectedOption}. {selectedText}
+                      </span>
+                    </p>
+                    {!answer.isCorrect && (
+                      <p className="text-xs text-muted-foreground">
+                        Correct answer: <span className="text-green-400">{correctText}</span>
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 
@@ -437,7 +562,7 @@ const Header = () => (
     </div>
     <div>
       <h1 className="text-2xl font-bold text-foreground">Analytics Dashboard</h1>
-      <p className="text-muted-foreground">Track your phishing simulation performance over time.</p>
+      <p className="text-muted-foreground">Track your baseline assessment and phishing simulation performance.</p>
     </div>
   </div>
 );

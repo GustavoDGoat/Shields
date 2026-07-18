@@ -5,8 +5,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import QuestionnaireGate from "@/components/auth/QuestionnaireGate";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
+import Questionnaire from "./pages/Questionnaire";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,7 +24,10 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/landing" element={<Index />} />
             <Route element={<ProtectedRoute />}>
-              <Route path="/dashboard/:tab?" element={<Dashboard />} />
+              <Route element={<QuestionnaireGate />}>
+                <Route path="/questionnaire" element={<Questionnaire />} />
+                <Route path="/dashboard/:tab?" element={<Dashboard />} />
+              </Route>
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

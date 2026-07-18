@@ -56,6 +56,23 @@ export default defineSchema({
     .index("by_userId", ["userId"])
     .index("by_userId_completedAt", ["userId", "completedAt"]),
 
+  questionnaireResults: defineTable({
+    userId: v.string(),
+    score: v.number(),
+    totalQuestions: v.number(),
+    correctAnswers: v.number(),
+    grade: v.string(),
+    completedAt: v.string(),
+    timeTakenSeconds: v.optional(v.number()),
+    answers: v.array(
+      v.object({
+        questionId: v.string(),
+        selectedOption: v.string(),
+        isCorrect: v.boolean(),
+      }),
+    ),
+  }).index("by_userId", ["userId"]),
+
   trainingVideos: defineTable({
     title: v.string(),
     description: v.string(),

@@ -8,10 +8,10 @@
  * @module
  */
 
-import type * as fixAdminRoles from "../fixAdminRoles.js";
 import type * as incidents from "../incidents.js";
 import type * as phishingSimulations from "../phishingSimulations.js";
 import type * as profiles from "../profiles.js";
+import type * as questionnaireResults from "../questionnaireResults.js";
 import type * as simulationResults from "../simulationResults.js";
 import type * as trainingVideos from "../trainingVideos.js";
 import type * as userManagement from "../userManagement.js";
@@ -25,10 +25,10 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
-  fixAdminRoles: typeof fixAdminRoles;
   incidents: typeof incidents;
   phishingSimulations: typeof phishingSimulations;
   profiles: typeof profiles;
+  questionnaireResults: typeof questionnaireResults;
   simulationResults: typeof simulationResults;
   trainingVideos: typeof trainingVideos;
   userManagement: typeof userManagement;
