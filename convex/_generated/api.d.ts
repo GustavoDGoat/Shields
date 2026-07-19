@@ -10,6 +10,7 @@
 
 import type * as incidents from "../incidents.js";
 import type * as phishingSimulations from "../phishingSimulations.js";
+import type * as postTestResults from "../postTestResults.js";
 import type * as profiles from "../profiles.js";
 import type * as questionnaireResults from "../questionnaireResults.js";
 import type * as simulationResults from "../simulationResults.js";
@@ -27,6 +28,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   incidents: typeof incidents;
   phishingSimulations: typeof phishingSimulations;
+  postTestResults: typeof postTestResults;
   profiles: typeof profiles;
   questionnaireResults: typeof questionnaireResults;
   simulationResults: typeof simulationResults;
