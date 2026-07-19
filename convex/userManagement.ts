@@ -37,5 +37,11 @@ export const deleteUser = mutation({
       .withIndex("by_userId", (q) => q.eq("userId", args.targetUserId))
       .collect();
     await Promise.all(simulationResults.map((r) => ctx.db.delete(r._id)));
+
+    const postTestResults = await ctx.db
+      .query("postTestResults")
+      .withIndex("by_userId", (q) => q.eq("userId", args.targetUserId))
+      .collect();
+    await Promise.all(postTestResults.map((r) => ctx.db.delete(r._id)));
   },
 });

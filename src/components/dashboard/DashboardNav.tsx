@@ -1,4 +1,4 @@
-import { Shield, BookOpen, AlertTriangle, Crosshair, BarChart3, Home, LogOut } from "lucide-react";
+import { Shield, BookOpen, AlertTriangle, Crosshair, BarChart3, Brain, LogOut } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -14,6 +14,7 @@ const tabs = [
   { id: "incidents", label: "Incidents", fullLabel: "Incident Tracking", icon: AlertTriangle },
   { id: "simulations", label: "Phishing", fullLabel: "Phishing Simulations", icon: Crosshair },
   { id: "analytics", label: "Analytics", fullLabel: "Analytics", icon: BarChart3 },
+  { id: "post-test", label: "Post Test", fullLabel: "Post Test", icon: Brain },
 ];
 
 const DashboardNav = ({ activeTab, setActiveTab }: DashboardNavProps) => {

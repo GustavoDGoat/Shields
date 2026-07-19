@@ -5,8 +5,9 @@ import TrainingTab from "@/components/dashboard/TrainingTab";
 import PhishingSimulationTab from "@/components/dashboard/phishing/PhishingSimulationTab";
 import IncidentTrackingTab from "@/components/dashboard/incidents/IncidentTrackingTab";
 import AnalyticsTab from "@/components/dashboard/analytics/AnalyticsTab";
+import PostTestTab from "@/components/dashboard/post-test/PostTestTab";
 
-const VALID_TABS = ["training", "incidents", "simulations", "analytics"];
+const VALID_TABS = ["training", "incidents", "simulations", "analytics", "post-test"];
 
 const Dashboard = () => {
   const { tab } = useParams<{ tab: string }>();
@@ -32,6 +33,7 @@ const Dashboard = () => {
         {activeTab === "incidents" && <IncidentTrackingTab />}
         {activeTab === "simulations" && <PhishingSimulationTab />}
         {activeTab === "analytics" && <AnalyticsTab />}
+        {activeTab === "post-test" && <PostTestTab />}
       </main>
     </div>
   );

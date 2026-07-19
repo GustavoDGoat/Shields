@@ -15,10 +15,12 @@ import {
   Shield,
   Users,
   ClipboardList,
+  Brain,
   CheckCircle2,
   XCircle,
   ChevronDown,
   ChevronUp,
+  RotateCcw,
 } from 'lucide-react';
 import { useQuery } from 'convex/react';
 import { api } from '../../../../convex/_generated/api';
@@ -57,6 +59,21 @@ interface QuestionnaireResult {
   answers: { questionId: string; selectedOption: string; isCorrect: boolean }[];
 }
 
+interface PostTestResult {
+  _id: string;
+  _creationTime: number;
+  userId: string;
+  userName?: string;
+  userEmail?: string;
+  score: number;
+  totalQuestions: number;
+  correctAnswers: number;
+  grade: string;
+  completedAt: string;
+  timeTakenSeconds?: number;
+  answers: { questionId: string; selectedOption: string; isCorrect: boolean }[];
+}
+
 const gradeColors: Record<string, string> = {
   A: 'text-green-400 bg-green-500/20 border-green-500/30',
   B: 'text-green-400 bg-green-500/15 border-green-500/25',
@@ -85,13 +102,21 @@ const AnalyticsTab = () => {
     api.questionnaireResults.getMyResult,
     user ? { userId: user.id } : 'skip',
   );
+  const myPostTestResults = useQuery(
+    api.postTestResults.getMyResults,
+    user ? { userId: user.id } : 'skip',
+  );
+  const allPostTestResults = useQuery(
+    api.postTestResults.listAll,
+    user && isAdmin && showAdminView ? { adminUserId: user.id } : 'skip',
+  );
 
   const isAdminView = isAdmin && showAdminView;
   const raw = isAdminView ? (allResults ?? []) : (myResults ?? []);
   const sortedResults = raw as SimulationResult[];
 
   const loading = isAdminView
-    ? allResults === undefined
+    ? allResults === undefined || allPostTestResults === undefined
     : myResults === undefined;
 
   if (loading) {
@@ -131,25 +156,40 @@ const AnalyticsTab = () => {
       </div>
 
       {isAdminView ? (
-        <AdminAnalytics results={sortedResults} />
+        <AdminAnalytics results={sortedResults} postTestResults={(allPostTestResults ?? []) as PostTestResult[]} />
       ) : (
-        <UserAnalytics results={sortedResults} questionnaire={questionnaireResult ?? null} />
+        <UserAnalytics
+          results={sortedResults}
+          questionnaire={questionnaireResult ?? null}
+          postTestResults={(myPostTestResults ?? []) as PostTestResult[]}
+        />
       )}
     </div>
   );
 };
 
-const UserAnalytics = ({ results, questionnaire }: { results: SimulationResult[]; questionnaire: QuestionnaireResult | null }) => {
-  if (results.length === 0) {
+const UserAnalytics = ({
+  results,
+  questionnaire,
+  postTestResults,
+}: {
+  results: SimulationResult[];
+  questionnaire: QuestionnaireResult | null;
+  postTestResults: PostTestResult[];
+}) => {
+  const hasSimulations = results.length > 0;
+  const hasPostTests = postTestResults.length > 0;
+
+  if (!hasSimulations && !hasPostTests) {
     return (
       <>
         {questionnaire && <BaselineQuestionnaireCard result={questionnaire} />}
         <Card className="bg-card border-border">
           <CardContent className="py-16 text-center">
             <FileX className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-foreground mb-2">No Simulation Data Yet</h3>
+            <h3 className="text-lg font-semibold text-foreground mb-2">No Training Data Yet</h3>
             <p className="text-muted-foreground max-w-md mx-auto">
-              Complete a phishing simulation to see your analytics and track your progress over time.
+              Complete a phishing simulation or post-test to see your analytics.
             </p>
           </CardContent>
         </Card>
@@ -157,13 +197,27 @@ const UserAnalytics = ({ results, questionnaire }: { results: SimulationResult[]
     );
   }
 
-  const latestResult = results[results.length - 1];
-  const bestScore = Math.max(...results.map(toPct));
-  const avgScore = Math.round(results.reduce((acc, r) => acc + toPct(r), 0) / results.length);
+  const latestResult = hasSimulations ? results[results.length - 1] : null;
+  const bestScore = hasSimulations ? Math.max(...results.map(toPct)) : 0;
+  const avgScore = hasSimulations
+    ? Math.round(results.reduce((acc, r) => acc + toPct(r), 0) / results.length)
+    : 0;
   const totalSimulations = results.length;
 
+  const postTestPcts = postTestResults.map((r) =>
+    Math.round((r.score / (r.totalQuestions * 10)) * 100),
+  );
+  const postTestBest = postTestPcts.length > 0 ? Math.max(...postTestPcts) : null;
+  const postTestAvg = postTestPcts.length > 0
+    ? Math.round(postTestPcts.reduce((a, b) => a + b, 0) / postTestPcts.length)
+    : null;
+  const latestPostTest = postTestResults[0] ?? null;
+  const latestPostTestPct = latestPostTest
+    ? Math.round((latestPostTest.score / (latestPostTest.totalQuestions * 10)) * 100)
+    : null;
+
   const chartData = results.map((r, i) => ({
-    name: `#${i + 1}`,
+    name: `Sim #${i + 1}`,
     score: toPct(r),
     correct: r.correctAnswers,
     date: new Date(r.completedAt).toLocaleDateString(),
@@ -172,17 +226,44 @@ const UserAnalytics = ({ results, questionnaire }: { results: SimulationResult[]
   return (
     <>
       {questionnaire && <BaselineQuestionnaireCard result={questionnaire} />}
-      <StatsGrid
-        items={[
-          { icon: Trophy, label: 'Best Score', value: `${bestScore}%`, iconColor: 'text-yellow-500' },
-          { icon: Target, label: 'Avg Score', value: `${avgScore}%`, iconColor: 'text-primary' },
-          { icon: BarChart3, label: 'Attempts', value: `${totalSimulations}`, iconColor: 'text-accent' },
-          { icon: TrendingUp, label: 'Latest Grade', value: latestResult.grade, iconColor: 'text-green-500' },
-        ]}
-      />
-      <ScoreTrendChart data={chartData} />
-      <CorrectAnswersChart data={chartData} />
-      <SimulationHistory results={results} />
+      {hasPostTests && (
+        <PostTestOverviewCard
+          results={postTestResults}
+          bestPct={postTestBest}
+          avgPct={postTestAvg}
+          latestPct={latestPostTestPct}
+          latestGrade={latestPostTest?.grade ?? null}
+        />
+      )}
+
+      {hasSimulations ? (
+        <>
+          <StatsGrid
+            items={[
+              { icon: Trophy, label: 'Best Score', value: `${bestScore}%`, iconColor: 'text-yellow-500' },
+              { icon: Target, label: 'Avg Score', value: `${avgScore}%`, iconColor: 'text-primary' },
+              { icon: BarChart3, label: 'Sim Attempts', value: `${totalSimulations}`, iconColor: 'text-accent' },
+              { icon: TrendingUp, label: 'Latest Sim Grade', value: latestResult?.grade ?? 'N/A', iconColor: 'text-green-500' },
+            ]}
+          />
+          <ScoreTrendChart data={chartData} />
+          <CorrectAnswersChart data={chartData} />
+          <SimulationHistory results={results} />
+        </>
+      ) : (
+        <Card className="bg-card border-border">
+          <CardContent className="py-8 text-center">
+            <FileX className="h-10 w-10 text-muted-foreground mx-auto mb-2 opacity-50" />
+            <p className="text-sm text-muted-foreground">
+              No phishing simulation data yet — only post-test results are shown above.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {hasPostTests && (
+        <PostTestHistoryCard results={postTestResults} />
+      )}
     </>
   );
 };
@@ -287,8 +368,166 @@ const BaselineQuestionnaireCard = ({ result }: { result: QuestionnaireResult }) 
   );
 };
 
-const AdminAnalytics = ({ results }: { results: SimulationResult[] }) => {
-  if (results.length === 0) {
+const PostTestOverviewCard = ({
+  results,
+  bestPct,
+  avgPct,
+  latestPct,
+  latestGrade,
+}: {
+  results: PostTestResult[];
+  bestPct: number | null;
+  avgPct: number | null;
+  latestPct: number | null;
+  latestGrade: string | null;
+}) => {
+  const latest = results[0];
+  return (
+    <Card className="bg-card border-border">
+      <CardHeader>
+        <CardTitle className="text-lg flex items-center gap-2">
+          <Brain className="h-5 w-5 text-primary" />
+          Post Test Performance
+        </CardTitle>
+        <CardDescription>
+          {results.length} post-test attempt{results.length !== 1 ? 's' : ''} — tracking your learning progress
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="p-4 bg-muted/30 rounded-lg text-center">
+            <p className="text-2xl font-bold text-primary">{latestPct !== null ? `${latestPct}%` : '—'}</p>
+            <p className="text-xs text-muted-foreground">Latest Score</p>
+          </div>
+          <div className="p-4 bg-muted/30 rounded-lg text-center">
+            <Badge className={cn('text-lg px-3 py-1 border', latestGrade ? gradeColors[latestGrade] : 'text-muted-foreground bg-muted/30 border-border')}>
+              {latestGrade ?? '—'}
+            </Badge>
+            <p className="text-xs text-muted-foreground mt-1">Latest Grade</p>
+          </div>
+          <div className="p-4 bg-muted/30 rounded-lg text-center">
+            <p className="text-2xl font-bold text-foreground">{bestPct !== null ? `${bestPct}%` : '—'}</p>
+            <p className="text-xs text-muted-foreground">Best Score</p>
+          </div>
+          <div className="p-4 bg-muted/30 rounded-lg text-center">
+            <p className="text-2xl font-bold text-foreground">{avgPct !== null ? `${avgPct}%` : '—'}</p>
+            <p className="text-xs text-muted-foreground">Average Score</p>
+          </div>
+        </div>
+        {latest && (
+          <div className="text-xs text-muted-foreground text-right">
+            Last attempt: {new Date(latest.completedAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
+const PostTestHistoryCard = ({ results }: { results: PostTestResult[] }) => {
+  const [expandedResult, setExpandedResult] = useState<string | null>(null);
+  const questionById = new Map(questionnairePool.map((q) => [q.id, q]));
+
+  return (
+    <Card className="bg-card border-border">
+      <CardHeader>
+        <CardTitle className="text-lg flex items-center gap-2">
+          <RotateCcw className="h-5 w-5 text-primary" />
+          Post Test History
+        </CardTitle>
+        <CardDescription>All your post-test attempts with answer breakdowns</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-3">
+          {results.map((result, index) => {
+            const pct = Math.round((result.score / (result.totalQuestions * 10)) * 100);
+            const colorClass = gradeColors[result.grade] || 'text-muted-foreground bg-muted/30 border-border';
+            const isExpanded = expandedResult === result._id;
+
+            return (
+              <div key={result._id}>
+                <div
+                  className="flex items-center justify-between p-3 bg-muted/30 rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
+                  onClick={() => setExpandedResult(isExpanded ? null : result._id)}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm text-muted-foreground w-6">#{results.length - index}</span>
+                    <div>
+                      <p className="text-sm font-medium text-foreground">
+                        {new Date(result.completedAt).toLocaleDateString('en-NG', {
+                          day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+                        })}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {result.correctAnswers}/{result.totalQuestions} correct
+                        {result.timeTakenSeconds ? ` • ${Math.floor(result.timeTakenSeconds / 60)}m ${result.timeTakenSeconds % 60}s` : ''}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-foreground">{pct}%</span>
+                    <Badge className={cn('text-xs border', colorClass)}>{result.grade}</Badge>
+                    {isExpanded ? (
+                      <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </div>
+                </div>
+
+                {isExpanded && (
+                  <div className="mt-3 space-y-3 pl-6">
+                    {result.answers.map((answer, aIndex) => {
+                      const question = questionById.get(answer.questionId);
+                      if (!question) return null;
+                      const selectedText = question.options.find((o) => o.key === answer.selectedOption)?.text ?? '';
+                      const correctText = question.options
+                        .filter((o) => question.correctOptions.includes(o.key))
+                        .map((o) => `${o.key}. ${o.text}`)
+                        .join(' / ');
+                      return (
+                        <div key={answer.questionId} className="p-3 bg-muted/20 rounded-lg space-y-2">
+                          <div className="flex items-start gap-2">
+                            {answer.isCorrect ? (
+                              <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0 mt-0.5" />
+                            ) : (
+                              <XCircle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
+                            )}
+                            <p className="text-sm font-medium text-foreground leading-relaxed">
+                              <span className="text-muted-foreground mr-1.5">Q{aIndex + 1}.</span>
+                              {question.question}
+                            </p>
+                          </div>
+                          <div className="pl-6 space-y-1">
+                            <p className="text-xs text-muted-foreground">
+                              Your answer: <span className={answer.isCorrect ? 'text-green-400' : 'text-red-400'}>
+                                {answer.selectedOption}. {selectedText}
+                              </span>
+                            </p>
+                            {!answer.isCorrect && (
+                              <p className="text-xs text-muted-foreground">
+                                Correct answer: <span className="text-green-400">{correctText}</span>
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+const AdminAnalytics = ({ results, postTestResults }: { results: SimulationResult[]; postTestResults: PostTestResult[] }) => {
+  const hasPostTests = postTestResults.length > 0;
+
+  if (results.length === 0 && !hasPostTests) {
     return (
       <Card className="bg-card border-border">
         <CardContent className="py-16 text-center">
@@ -335,6 +574,17 @@ const AdminAnalytics = ({ results }: { results: SimulationResult[] }) => {
     }))
     .sort((a, b) => b.avg - a.avg);
 
+  const postTestPcts = postTestResults.map((r) =>
+    Math.round((r.score / (r.totalQuestions * 10)) * 100),
+  );
+  const postTestAvg = postTestPcts.length > 0
+    ? Math.round(postTestPcts.reduce((a, b) => a + b, 0) / postTestPcts.length)
+    : 0;
+  const postTestGradeDist = postTestResults.reduce<Record<string, number>>((acc, r) => {
+    acc[r.grade] = (acc[r.grade] || 0) + 1;
+    return acc;
+  }, {});
+
   return (
     <>
       <StatsGrid
@@ -345,6 +595,17 @@ const AdminAnalytics = ({ results }: { results: SimulationResult[] }) => {
           { icon: Trophy, label: 'Highest Score', value: `${bestScore}%`, iconColor: 'text-yellow-500' },
         ]}
       />
+
+      {hasPostTests && (
+        <StatsGrid
+          items={[
+            { icon: RotateCcw, label: 'Total Post Tests', value: `${postTestResults.length}`, iconColor: 'text-purple-500' },
+            { icon: Brain, label: 'Post Test Avg', value: `${postTestAvg}%`, iconColor: 'text-accent' },
+            { icon: Trophy, label: 'Post Test Best', value: `${postTestPcts.length > 0 ? Math.max(...postTestPcts) : 0}%`, iconColor: 'text-yellow-500' },
+            { icon: Users, label: 'PT Users', value: `${[...new Set(postTestResults.map((r) => r.userId).filter(Boolean))].length}`, iconColor: 'text-blue-500' },
+          ]}
+        />
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card className="bg-card border-border">
@@ -440,6 +701,41 @@ const AdminAnalytics = ({ results }: { results: SimulationResult[] }) => {
           </div>
         </CardContent>
       </Card>
+
+      {hasPostTests && (
+        <Card className="bg-card border-border">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Brain className="h-5 w-5 text-primary" />
+              Post Test Grade Distribution
+            </CardTitle>
+            <CardDescription>{postTestResults.length} total post-test attempts</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {['A', 'B', 'C', 'D', 'E', 'F'].map((g) => {
+                const count = postTestGradeDist[g] || 0;
+                const pct = Math.round((count / postTestResults.length) * 100);
+                return (
+                  <div key={g} className="flex items-center gap-3">
+                    <Badge className={cn('w-8 justify-center text-xs border', gradeColors[g])}>{g}</Badge>
+                    <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className={cn(
+                          'h-full rounded-full transition-all',
+                          g === 'A' || g === 'B' ? 'bg-green-500' : g === 'C' ? 'bg-yellow-500' : 'bg-red-500',
+                        )}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    <span className="text-xs text-muted-foreground w-12 text-right">{count}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </>
   );
 };
