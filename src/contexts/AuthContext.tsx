@@ -86,13 +86,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (!isLoading) {
       setHydrating(false);
-      if (!workosUser) {
-        clearCached();
-        setCachedUser(null);
-        cachedRef.current = null;
-      }
     }
   }, [isLoading]);
+
+  useEffect(() => {
+    if (!isLoading && !hydrating && !workosUser) {
+      clearCached();
+      setCachedUser(null);
+      cachedRef.current = null;
+    }
+  }, [isLoading, hydrating, workosUser]);
 
   useEffect(() => {
     if (workosUser) {
