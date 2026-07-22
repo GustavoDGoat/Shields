@@ -1,5 +1,5 @@
 import { Shield, BookOpen, AlertTriangle, Crosshair, BarChart3, Brain, LogOut } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -19,11 +19,9 @@ const tabs = [
 
 const DashboardNav = ({ activeTab, setActiveTab }: DashboardNavProps) => {
   const { signOut } = useAuth();
-  const navigate = useNavigate();
 
   const handleSignOut = async () => {
     await signOut();
-    navigate("/", { replace: true });
   };
 
   return (

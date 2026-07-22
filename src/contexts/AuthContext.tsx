@@ -141,10 +141,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signIn = useCallback(async () => { await workosSignIn({}); }, [workosSignIn]);
   const signUp = useCallback(async () => { await workosSignUp({}); }, [workosSignUp]);
   const signOut = useCallback(async () => {
+    try {
+      await workosSignOut({});
+    } catch (error) {
+      console.error("WorkOS sign out failed:", error);
+    }
     clearCached();
     setCachedUser(null);
     cachedRef.current = null;
-    await workosSignOut({});
   }, [workosSignOut]);
   const signInWithGoogle = useCallback(async () => { await workosSignIn({}); }, [workosSignIn]);
 
